@@ -50,30 +50,36 @@ public class DinningPhilosophers {
             Random random = new Random();
 
             for (; ; ) {
-                synchronized (left) {
-                    System.out.printf("哲学家 %d 拿到左手筷子%n", id);
+                if (id % 2 == 0) {
+                    haveDinner(random, left, right, "左", "右");
+                } else {
+                    haveDinner(random, right, left, "右", "左");
+                }
+            }
+        }
+
+        private void haveDinner(Random random, Chopstick first, Chopstick second, String firstHand, String secondHand) {
+            synchronized (first) {
+                System.out.printf("哲学家 %d 拿到%s手筷子%n", id, firstHand);
+
+                try {
+                    int millis = 1000 + random.nextInt(1000);
+                    System.out.printf("哲学家 %d 等待 %d 毫秒%n", id, millis);
+                    Thread.sleep(millis);
+                } catch (InterruptedException e) {
+                    System.out.println(e.getMessage());
+                }
+
+                synchronized (second) {
+                    System.out.printf("哲学家%d拿到%s手筷子%n", id, secondHand);
+                    System.out.printf("哲学家%d进餐%n", id);
 
                     try {
                         int millis = 1000 + random.nextInt(1000);
                         System.out.printf("哲学家 %d 等待 %d 毫秒%n", id, millis);
-                        Thread.sleep(millis);
+                        Thread.sleep(2000);
                     } catch (InterruptedException e) {
                         System.out.println(e.getMessage());
-                        return;
-                    }
-
-                    synchronized (right) {
-                        System.out.printf("哲学家%d拿到右手筷子%n", id);
-                        System.out.printf("哲学家%d进餐%n", id);
-
-                        try {
-                            int millis = 1000 + random.nextInt(1000);
-                            System.out.printf("哲学家 %d 等待 %d 毫秒%n", id, millis);
-                            Thread.sleep(2000);
-                        } catch (InterruptedException e) {
-                            System.out.println(e.getMessage());
-                            return;
-                        }
                     }
                 }
             }
