@@ -1,10 +1,8 @@
 package com.github.hoshihon.multithread;
-
-import java.io.FileOutputStream;
 import java.util.LinkedList;
 import java.util.Random;
 
-public class producer_consumer {
+public class ProducerWithConsumer {
 
     public static class Factory {
         private int max_size = 20;
@@ -62,6 +60,7 @@ public class producer_consumer {
 
     public static class Producer implements Runnable{
         public Factory factory;
+
 
         public Producer(Factory factory){
             this.factory = factory;
