@@ -1,100 +1,105 @@
 package com.github.hoshihon.multithread;
-import java.util.LinkedList;
-import java.util.Random;
+
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ProducerWithConsumer {
 
-    public static class Factory {
-        private int max_size = 20;
-        private LinkedList goods_list = new LinkedList();
-        private String name = "";
+    public static class ProducerConsumerQueue<T> {
 
-        Factory(String name, int max_size){
-            this.name = name;
-            this.max_size = max_size;
+        private LinkedList<T> list = new LinkedList<>();
+
+        private int maxSize;
+
+        ProducerConsumerQueue(int maxSize) {
+            this.maxSize = maxSize;
         }
 
-        public void produce(int num){
-            synchronized (goods_list){
-                while (goods_list.size() + num >= max_size){
-                        System.out.println("预计生产 " + name +" 数量: " + num
-                            + " 总库存量:  " +goods_list.size() );
-                    System.out.println("生产等待阻塞");
-                    try {
-                        goods_list.wait();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                    for (int i = 0; i < num; i++){
-                        goods_list.add(new Object());
-                    }
-                    System.out.println("以生产" + name + "数量: " + num
-                            + " 现库存量: " +goods_list.size() );
-                    goods_list.notifyAll();
+        public void push(T obj) throws InterruptedException {
+            synchronized (list) {
+                System.out.print("produce: " + obj + "\t");
+                while (list.size() >= maxSize) {
+                    list.wait(); // sleep
                 }
-            }
-        }
-        public void consume(int num){
-            synchronized (goods_list){
-                while (num > goods_list.size()){
-                    System.out.println("预计消费 " + name +" 数量: " + num
-                            + "总库存量: " +goods_list.size() );
-                    System.out.println("消费等待阻塞");
-                    try {
-                        goods_list.wait();
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                    for (int i=0; i<num; i++){
-                        goods_list.remove();
-                    }
-                    System.out.println("已消费" + name + "数量: " + num
-                            + " 现库存量: " +goods_list.size() );
-                    goods_list.notifyAll();
-                }
+                list.push(obj);
+                System.out.println("after produce size " + list.size());
+                list.notifyAll();
             }
         }
 
+        public List<T> poll(int n) throws InterruptedException {
+            // TODO
+            return Collections.emptyList();
+        }
 
+        public T poll() throws InterruptedException {
+            synchronized (list) {
+                while (list.isEmpty()) {
+                    list.notifyAll();
+                    list.wait();
+                }
+                T t = list.poll();
+
+                System.out.println("consume: " + t);
+                System.out.println("after consume size " + list.size());
+
+                return t;
+            }
+        }
     }
 
-    public static class Producer implements Runnable{
-        public Factory factory;
+    public static class Producer implements Runnable {
+        ProducerConsumerQueue<Object> list;
 
-
-        public Producer(Factory factory){
-            this.factory = factory;
+        public Producer(ProducerConsumerQueue<Object> list) {
+            this.list = list;
         }
+
+
         @Override
         public void run() {
-            Random random = new Random();
-            factory.produce(random.nextInt(10));
+            for (; ; ) {
+                try {
+                    Object obj = new Object();
+                    list.push(obj);
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    System.out.println(e.getMessage());
+                }
+            }
         }
     }
-    public static class Consumser implements Runnable{
-        public Factory factory;
-        public Consumser(Factory factory){
-            this.factory = factory;
-        }
-        @Override
-        public void run() {
-            Random random = new Random();
-            factory.consume(random.nextInt(10));
+
+    public static class Consumer implements Runnable {
+        ProducerConsumerQueue<Object> list;
+
+        public Consumer(ProducerConsumerQueue<Object> list) {
+            this.list = list;
         }
 
+        @Override
+        public void run() {
+            for (; ; ) {
+                try {
+                    list.poll();
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+        }
     }
+
     public static void main(String[] args) {
-        Factory factory_crystals = new Factory("宝晶石", 20);
+        ProducerConsumerQueue<Object> list = new ProducerConsumerQueue<>(5);
+        Producer producer = new Producer(list);
+        Consumer consumer = new Consumer(list);
 
-        Producer producer_crystals = new Producer(factory_crystals);
-        Consumser consumer_crystals = new Consumser(factory_crystals);
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
 
-        for (int i = 0; i < 5; i++){
-            new Thread(producer_crystals, "小福" + i).start();
-        }
-        for (int i = 0; i < 5; i++){
-            new Thread(consumer_crystals, "骑空士" + i).start();
-        }
+        executorService.submit(producer);
+        executorService.submit(consumer);
     }
 
 }
