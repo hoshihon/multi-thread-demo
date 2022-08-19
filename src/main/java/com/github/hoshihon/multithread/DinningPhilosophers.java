@@ -3,6 +3,7 @@ package com.github.hoshihon.multithread;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class DinningPhilosophers {
 
@@ -28,6 +29,8 @@ public class DinningPhilosophers {
     }
 
     public static class Chopstick {
+
+        ReentrantLock lock = new ReentrantLock();
 
     }
 
@@ -59,29 +62,43 @@ public class DinningPhilosophers {
         }
 
         private void haveDinner(Random random, Chopstick first, Chopstick second, String firstHand, String secondHand) {
-            synchronized (first) {
-                System.out.printf("哲学家 %d 拿到%s手筷子%n", id, firstHand);
-
+            if (first.lock.tryLock()) {
                 try {
-                    int millis = 1000 + random.nextInt(1000);
-                    System.out.printf("哲学家 %d 等待 %d 毫秒%n", id, millis);
-                    Thread.sleep(millis);
-                } catch (InterruptedException e) {
-                    System.out.println(e.getMessage());
-                }
-
-                synchronized (second) {
-                    System.out.printf("哲学家%d拿到%s手筷子%n", id, secondHand);
-                    System.out.printf("哲学家%d进餐%n", id);
+                    System.out.printf("哲学家 %d 拿到%s手筷子%n", id, firstHand);
 
                     try {
                         int millis = 1000 + random.nextInt(1000);
                         System.out.printf("哲学家 %d 等待 %d 毫秒%n", id, millis);
-                        Thread.sleep(2000);
+                        Thread.sleep(millis);
                     } catch (InterruptedException e) {
                         System.out.println(e.getMessage());
                     }
+
+                    if (second.lock.tryLock()) {
+                        try {
+                            System.out.printf("哲学家%d拿到%s手筷子%n", id, secondHand);
+                            System.out.printf("哲学家%d进餐%n", id);
+
+                            try {
+                                int millis = 1000 + random.nextInt(1000);
+                                System.out.printf("哲学家 %d 等待 %d 毫秒%n", id, millis);
+                                Thread.sleep(2000);
+                            } catch (InterruptedException e) {
+                                System.out.println(e.getMessage());
+                            }
+                        } finally {
+                            second.lock.unlock();
+                        }
+                    } else {
+                        System.out.printf("哲学家%d未获取到%s手筷子%n", id, secondHand);
+                        System.out.printf("哲学家%d放弃进餐%n", id);
+                    }
+                } finally {
+                    first.lock.unlock();
                 }
+            } else {
+                System.out.printf("哲学家%d未获取到%s手筷子%n", id, firstHand);
+                System.out.printf("哲学家%d放弃进餐%n", id);
             }
         }
 
