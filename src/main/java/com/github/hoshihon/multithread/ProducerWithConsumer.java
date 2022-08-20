@@ -8,7 +8,7 @@ public class ProducerWithConsumer {
 
     public static class ProducerConsumerQueue<T> {
 
-        private LinkedList<T> list = new LinkedList<>();
+        private final LinkedList<T> list = new LinkedList<>();
 
         private int maxSize;
 
@@ -29,8 +29,23 @@ public class ProducerWithConsumer {
         }
 
         public List<T> poll(int n) throws InterruptedException {
-            // TODO
-            return Collections.emptyList();
+            List<T> result = new ArrayList<T>();
+            synchronized (list) {
+                for (int i = 0; i < n; i++) {
+                    while (list.isEmpty()) {
+                        list.notifyAll();
+                        System.out.println("waiting object, needs " + (n - i));
+                        list.wait();
+                    }
+
+                    T t = list.poll();
+                    result.add(t);
+                    System.out.println("consume: " + t);
+                }
+                System.out.println("after consume size " + list.size());
+                return result;
+            }
+
         }
 
         public T poll() throws InterruptedException {
@@ -73,16 +88,18 @@ public class ProducerWithConsumer {
 
     public static class Consumer implements Runnable {
         ProducerConsumerQueue<Object> list;
+        int n;
 
-        public Consumer(ProducerConsumerQueue<Object> list) {
+        public Consumer(ProducerConsumerQueue<Object> list, int n) {
             this.list = list;
+            this.n = n;
         }
 
         @Override
         public void run() {
             for (; ; ) {
                 try {
-                    list.poll();
+                    list.poll(n);
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     System.out.println(e.getMessage());
@@ -94,7 +111,7 @@ public class ProducerWithConsumer {
     public static void main(String[] args) {
         ProducerConsumerQueue<Object> list = new ProducerConsumerQueue<>(5);
         Producer producer = new Producer(list);
-        Consumer consumer = new Consumer(list);
+        Consumer consumer = new Consumer(list, 2);
 
         ExecutorService executorService = Executors.newFixedThreadPool(2);
 
